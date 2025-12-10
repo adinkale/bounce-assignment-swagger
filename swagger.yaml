@@ -1,0 +1,7 @@
+openapi: 3.0.3
+info:
+  title: Bounce Assignment API
+  description: TODO: Will be updated after receiving the task
+  version: "1.0.0"
+
+paths: {}
