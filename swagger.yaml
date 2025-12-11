@@ -1,8 +1,158 @@
 openapi: 3.0.3
 info:
-  title: Bounce Assignment API
+  title: Bounce OR Scheduler API
   version: "1.0.0"
-  description: |
-    Placeholder spec. Will be replaced after receiving the assignment.
+  description: >
+    Operating Room Scheduler service that allocates surgeries to rooms
+    based on equipment and time constraints, and queues requests when
+    no valid slot is available.
 
-paths: {}
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+tags:
+  - name: OR Scheduler
+    description: Operating Room scheduling operations
+
+paths:
+  /api/or-scheduler/next-slot:
+    post:
+      tags:
+        - OR Scheduler
+      summary: Request the next available operation slot
+      operationId: requestNextSlot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestOperationDto'
+      responses:
+        "201":
+          description: Operation scheduled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledOperationResponseDto'
+        "202":
+          description: Operation could not be scheduled immediately and was queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueuedOperationResponseDto'
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /api/or-scheduler/health:
+    get:
+      tags:
+        - OR Scheduler
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+components:
+  schemas:
+    DoctorType:
+      type: string
+      description: Type of doctor requesting surgery
+      enum:
+        - HEART
+        - BRAIN
+      example: HEART
+
+    RequestOperationDto:
+      type: object
+      required:
+        - doctorId
+        - doctorType
+      properties:
+        doctorId:
+          type: string
+          description: Unique identifier of the doctor requesting surgery
+          example: d-123
+        doctorType:
+          $ref: '#/components/schemas/DoctorType'
+
+    ScheduledOperationResponseDto:
+      type: object
+      description: Response body when an operation is scheduled successfully
+      required:
+        - status
+        - roomId
+        - doctorType
+        - startTime
+        - endTime
+        - durationMinutes
+      properties:
+        status:
+          type: string
+          enum:
+            - SCHEDULED
+          example: SCHEDULED
+        roomId:
+          type: integer
+          description: Identifier of the operating room
+          example: 3
+        doctorType:
+          $ref: '#/components/schemas/DoctorType'
+        startTime:
+          type: string
+          format: date-time
+          description: Start time of the scheduled operation (ISO 8601, UTC)
+          example: "2025-12-11T10:00:00.000Z"
+        endTime:
+          type: string
+          format: date-time
+          description: End time of the scheduled operation (ISO 8601, UTC)
+          example: "2025-12-11T13:00:00.000Z"
+        durationMinutes:
+          type: integer
+          description: Duration of the operation in minutes
+          example: 180
+
+    QueuedOperationResponseDto:
+      type: object
+      description: Response body when an operation request is queued
+      required:
+        - status
+        - queuePosition
+      properties:
+        status:
+          type: string
+          enum:
+            - QUEUED
+          example: QUEUED
+        queuePosition:
+          type: integer
+          description: Position of the request in the queue (1 based)
+          example: 1
+
+    ValidationError:
+      type: object
+      description: Validation error response produced by the global ValidationPipe
+      properties:
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: array
+          items:
+            type: string
+          example:
+            - doctorType must be a valid enum value
+        error:
+          type: string
+          example: Bad Request
